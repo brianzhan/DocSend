@@ -9,5 +9,5 @@ Chrome requires the manifest file to be at the root of the extension folder. All
 1. Open `chrome://extensions` in Chrome.
 2. Enable **Developer mode**.
 3. Click **Load unpacked** and select the `extension` folder of this repository.
-4. Navigate to a DocSend slide deck and click the extension button to download the slides as a PDF.
+4. Navigate to a DocSend slide deck. The extension icon appears in the address bar. Click it to download the slides as a PDF.
 
