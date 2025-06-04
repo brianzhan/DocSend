@@ -6,9 +6,10 @@ const executeJob = () => {
     jobInProgress = true;
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         const currentTabId = tabs[0].id;
-        chrome.tabs.executeScript(currentTabId, {file: "./modules/pdfkit.js"});
-        chrome.tabs.executeScript(currentTabId, {file: "./modules/blob-stream.js"});
-        chrome.tabs.executeScript(currentTabId, {file: "./src/DocSendDownloader.js"}, () => {
+        chrome.scripting.executeScript({
+            target: {tabId: currentTabId},
+            files: ["./modules/pdfkit.js", "./modules/blob-stream.js", "./src/DocSendDownloader.js"]
+        }, () => {
             connection = chrome.tabs.connect(currentTabId);
             connection.postMessage({requestType: "GENERATE_PDF"});
             connection.onMessage.addListener((message) => {
@@ -30,13 +31,13 @@ chrome.runtime.onInstalled.addListener(() => {
                         pageUrl: {hostSuffix: 'docsend.com', pathContains: 'view'},
                     })
                 ],
-                actions: [new chrome.declarativeContent.ShowPageAction()]
+                actions: [new chrome.declarativeContent.ShowAction()]
             }
         ]);
     });
 });
 
-chrome.pageAction.onClicked.addListener(() => {
+chrome.action.onClicked.addListener(() => {
     chrome.webRequest.onHeadersReceived.addListener(
         function(response) {
             response.responseHeaders.push({'name': "Access-Control-Allow-Origin", 'value': "*"});
