@@ -52,21 +52,18 @@ chrome.runtime.onConnect.addListener((port) => {
 
 let startTime;
 let numSlidesComplete = 0;
+const doc = new PDFDocument({layout:'landscape', margin: 0, autoFirstPage: false});
+const stream = doc.pipe(blobStream());
 
-const buildPdf = async (imageUrls) => {
-    startTime = new Date().getTime();
-    const blobs = [];
-    for (let i=0; i<imageUrls.length; i++) {
-        await getImageAsBlob(imageUrls[i]).then(data => blobs.push(data));
-    }
-    const pdfBlob = createPdfFromImages(blobs);
+stream.on("finish", () => {
     slideDeckGenerationInProgress = false;
-    initiateDownload(URL.createObjectURL(pdfBlob));
-    hideCustomAlert();
+    let blobUrl = stream.toBlobURL('application/pdf');
     let totalTime = new Date().getTime() - startTime;
+    initiateDownload(blobUrl);
+    hideCustomAlert();
     showDefaultAlert("Done ! Slide deck PDF generated in " + String(totalTime) + " ms.");
     connection.postMessage({requestType: "SET_JOB_COMPLETE"});
-};
+});
 
 const getImageAsBlob = async (url) =>
     await fetch(url)
@@ -77,64 +74,30 @@ const getImageAsBlob = async (url) =>
     })
     .then(blob => new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve({data: reader.result, blob});
+        reader.onloadend = () => resolve(reader.result);
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     }))
-    .catch((e) => {
+    .catch(() => {
         console.error("Error fetching slide deck images.");
     });
 
-function createPdfFromImages(images) {
-    let pdf = '%PDF-1.3\n';
-    const objects = [];
-    const offsets = [0];
-
-    function addObject(str) {
-        offsets.push(pdf.length);
-        pdf += str;
+const addSlidesToPDF = async (imageUrls) =>{
+    for (let i=0; i<imageUrls.length; i++) {
+        await getImageAsBlob(imageUrls[i]).then(data => {
+            const img = doc.openImage(data);
+            doc.addPage({size: [img.width, img.height]});
+            doc.image(img, 0, 0);
+        });    
     }
+};
 
-    const pageKids = [];
-    let objIndex = 1;
-    for (let i=0; i<images.length; i++) {
-        const image = images[i];
-        const img = new Image();
-        img.src = image.data;
-        const width = img.width || 800;
-        const height = img.height || 600;
-        const imageObjId = ++objIndex;
-        const contentObjId = ++objIndex;
-        const pageObjId = ++objIndex;
+const buildPdf = async (imageUrls) => {
+    startTime = new Date().getTime();
+    await addSlidesToPDF(imageUrls);
+    doc.end();
+};
 
-        const imgBinary = atob(image.data.split(',')[1]);
-        const imgLength = imgBinary.length;
-        addObject(`${imageObjId} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgLength} >>\nstream\n`);
-        pdf += imgBinary + '\nendstream\nendobj\n';
-
-        addObject(`${contentObjId} 0 obj\n<< /Length ${('q '+width+' 0 0 '+height+' 0 0 cm /Im'+i+' Do Q').length} >>\nstream\nq ${width} 0 0 ${height} 0 0 cm /Im${i} Do Q\nendstream\nendobj\n`);
-
-        addObject(`${pageObjId} 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im${i} ${imageObjId} 0 R >> >> /MediaBox [0 0 ${width} ${height}] /Contents ${contentObjId} 0 R >>\nendobj\n`);
-
-        pageKids.push(`${pageObjId} 0 R`);
-    }
-
-    const pagesObj = `2 0 obj\n<< /Type /Pages /Kids [${pageKids.join(' ')}] /Count ${images.length} >>\nendobj\n`;
-    addObject(pagesObj);
-
-    const catalogObj = `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`;
-    addObject(catalogObj);
-
-    const xrefStart = pdf.length;
-    pdf += 'xref\n0 ' + (offsets.length) + '\n0000000000 65535 f \n';
-    for (let i=1; i<offsets.length; i++) {
-        pdf += ("0000000000" + offsets[i]).slice(-10) + ' 00000 n \n';
-    }
-
-    pdf += 'trailer\n<< /Size ' + offsets.length + ' /Root 1 0 R >>\nstartxref\n' + xrefStart + '\n%%EOF';
-
-    return new Blob([pdf], {type: 'application/pdf'});
-}
 
 let defaultAlertContainer = document.getElementsByClassName("row flash flash-notice")[0];
 let defaultAlertTextElement = document.getElementsByClassName("alert_content alert_content--with-close")[0];
@@ -167,6 +130,12 @@ let showDefaultAlert = (message) => {
 let showCustomAlert = (message) => {
     customAlertContainerText.innerHTML = message;
     customAlertContainer.style = "display: block; padding: 10px; margin-bottom: 0px;";
+};
+
+let hideDefaultAlert = () => {
+    if (!defaultAlertContainer || !defaultAlertTextElement) return;
+    defaultAlertTextElement.innerHTML = "";
+    defaultAlertContainer.setAttribute("style", "display:none;");
 };
 
 let hideCustomAlert = () => {

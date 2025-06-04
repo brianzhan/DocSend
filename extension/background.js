@@ -6,6 +6,8 @@ const executeJob = () => {
     jobInProgress = true;
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         const currentTabId = tabs[0].id;
+        chrome.tabs.executeScript(currentTabId, {file: "./modules/pdfkit.js"});
+        chrome.tabs.executeScript(currentTabId, {file: "./modules/blob-stream.js"});
         chrome.tabs.executeScript(currentTabId, {file: "./src/DocSendDownloader.js"}, () => {
             connection = chrome.tabs.connect(currentTabId);
             connection.postMessage({requestType: "GENERATE_PDF"});

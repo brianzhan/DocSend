@@ -1,0 +1,8 @@
+{
+  "name": "docsend-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension to download DocSend slide decks as PDF",
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  }
+}
