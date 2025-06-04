@@ -5,7 +5,7 @@
   "manifest_version": 2,
   "background": {
     "scripts": ["background.js"],
-    "persistent": false
+    "persistent": true
   },
   "page_action": {
     "default_title": "Download Slide Deck"
