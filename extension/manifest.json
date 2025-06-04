@@ -1,0 +1,32 @@
+{
+  "name": "DocSend Slide Deck Downloader",
+  "description": "Download DocSend slide decks as PDF",
+  "version": "1.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Download Slide Deck"
+  },
+  "permissions": [
+    "tabs",
+    "scripting",
+    "activeTab",
+    "declarativeContent",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "host_permissions": [
+    "https://*.docsend.com/*",
+    "https://*.cloudfront.net/*"
+  ],
+  "web_accessible_resources": [{
+    "resources": [
+      "modules/pdfkit.js",
+      "modules/blob-stream.js",
+      "src/DocSendDownloader.js"
+    ],
+    "matches": ["https://*.docsend.com/*"]
+  }]
+}
